@@ -158,6 +158,58 @@ public class DemoApplication extends SpringBootServletInitializer{
     }
 
     /**
+     * 修改用户信息API
+     * @param jsonParam
+     * @return
+     * @throws JSONException
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
+    @ResponseBody
+    @RequestMapping(value = "/alterUserInfo", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
+    public String alterUserInfo(@RequestBody JSONObject jsonParam) throws JSONException, ClassNotFoundException, SQLException {
+
+        int userId=jsonParam.getInteger("userId");
+        String name=jsonParam.getString("name");
+        String telephone=jsonParam.getString("telephone");
+        String passwordBefore=jsonParam.getString("passwordBefore");
+        String passwordAfter=jsonParam.getString("passwordAfter");
+
+        // 连接数据库
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String url = "jdbc:mysql://47.95.240.12/test?characterEncoding=utf8&useSSL=false&serverTimezone=GMT";
+        Connection con = DriverManager.getConnection(url, "hhh", "123");
+        Statement statement = con.createStatement();
+        ResultSet resultSet = statement.executeQuery("select * from User_info where User_id="+userId);
+        JSONObject result = new JSONObject();
+        if(resultSet.next())
+        {
+            if(passwordBefore.equals(resultSet.getString("User_password")))
+            {
+                int row=statement.executeUpdate("UPDATE User_info set User_name='"+name+"', User_password='"+passwordAfter+"', User_phone_num='"+telephone+"' WHERE User_id="+userId);
+                if(row==1)
+                {
+                    result.put("msg","ok");
+                }
+                else
+                {
+                    result.put("msg","false");
+                }
+            }
+            else
+            {
+                result.put("msg", "false");
+            }
+        }
+        else
+        {
+            result.put("msg", "false");
+        }
+
+        return result.toJSONString();
+    }
+
+    /**
      * 添加用户自定义任务API
      * @param jsonParam
      * @return
@@ -194,6 +246,43 @@ public class DemoApplication extends SpringBootServletInitializer{
     }
 
     /**
+     * 修改自定义任务API
+     * @param jsonParam
+     * @return
+     * @throws JSONException
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
+    @ResponseBody
+    @RequestMapping(value = "/alterTask", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
+    public String alterTask(@RequestBody JSONObject jsonParam) throws JSONException, ClassNotFoundException, SQLException {
+
+        String info=jsonParam.getString("info");
+        String start=jsonParam.getString("start");
+        String end=jsonParam.getString("end");
+        int userId=jsonParam.getInteger("userId");
+        int taskId=jsonParam.getInteger("taskId");
+
+        // 连接数据库
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String url = "jdbc:mysql://47.95.240.12/test?characterEncoding=utf8&useSSL=false&serverTimezone=GMT";
+        Connection con = DriverManager.getConnection(url, "hhh", "123");
+        Statement statement = con.createStatement();
+        int row=statement.executeUpdate("UPDATE User_Task set U_Task_Info='"+info+"', U_Task_start='"+start+"', U_Task_end='"+end+"' WHERE U_Task_Id="+taskId);
+        JSONObject result = new JSONObject();
+        if(row==1)
+        {
+            result.put("msg","ok");
+        }
+        else
+        {
+            result.put("msg","false");
+        }
+
+        return result.toJSONString();
+    }
+
+    /**
      * 查看所有任务API
      * @param jsonParam
      * @return
@@ -213,7 +302,7 @@ public class DemoApplication extends SpringBootServletInitializer{
         String url = "jdbc:mysql://47.95.240.12/test?characterEncoding=utf8&useSSL=false&serverTimezone=GMT";
         Connection con = DriverManager.getConnection(url, "hhh", "123");
         Statement statement = con.createStatement();
-        ResultSet resultSet = statement.executeQuery("SELECT * FROM User_Task WHERE User_Id="+userId+" ORDER BY U_Task_start ASC");
+        ResultSet resultSet = statement.executeQuery("SELECT * FROM User_Task WHERE User_Id="+userId+" ORDER BY U_Task_start ASC");//开始时间升序
         JSONObject result = new JSONObject();
         JSONArray taskArr=new JSONArray();
         int i=0;
@@ -233,7 +322,7 @@ public class DemoApplication extends SpringBootServletInitializer{
                 jo.put("taskInfo",resultSet.getString("U_Task_Info"));
                 jo.put("start",resultSet.getString("U_Task_start"));
                 jo.put("end",resultSet.getString("U_Task_end"));
-                jo.put("status",resultSet.getBoolean("U_Task_status"));
+                jo.put("status",resultSet.getString("U_Task_status"));
                 jo.put("score",resultSet.getInt("U_Task_score"));
 
                 taskArr.add(i,jo);
@@ -262,10 +351,10 @@ public class DemoApplication extends SpringBootServletInitializer{
     @RequestMapping(value = "/viewSysTask", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
     public String viewSysTask(@RequestBody JSONObject jsonParam) throws JSONException, ClassNotFoundException, SQLException {
 
-        String cata1="健康的饮食";
-        String cata2="美妙的夜晚";
-        String cata3="专注和集中";
-        String cata4="精力更充沛";
+//        String cata1="健康的饮食";
+//        String cata2="美妙的夜晚";
+//        String cata3="专注和集中";
+//        String cata4="精力更充沛";
         int userId=jsonParam.getInteger("userId");
         String catagory=jsonParam.getString("catagory");
 
@@ -274,7 +363,13 @@ public class DemoApplication extends SpringBootServletInitializer{
         String url = "jdbc:mysql://47.95.240.12/test?characterEncoding=utf8&useSSL=false&serverTimezone=GMT";
         Connection con = DriverManager.getConnection(url, "hhh", "123");
         Statement statement = con.createStatement();
-        ResultSet resultSet = statement.executeQuery("SELECT * FROM User_Task WHERE User_Id="+userId+" ORDER BY U_Task_start ASC");
+
+        ResultSet resultSet = statement.executeQuery(
+                "SELECT * FROM User_Main_Task LEFT JOIN Main_Task on User_Main_Task.Task_Task_Id=Main_Task.M_Task_Id\n" +
+                "WHERE M_Task_Catagory='"+catagory+"' and User_Task_id="+userId+"\n" +
+                "union \n" +
+                "SELECT * FROM User_Main_Task RIGHT JOIN Main_Task on User_Main_Task.Task_Task_Id=Main_Task.M_Task_Id\n" +
+                "WHERE M_Task_Catagory='"+catagory+"' and User_Task_id="+userId+" ORDER BY M_Task_number ASC");//任务顺序升序
         JSONObject result = new JSONObject();
         JSONArray taskArr=new JSONArray();
         int i=0;
@@ -282,34 +377,63 @@ public class DemoApplication extends SpringBootServletInitializer{
         {
             if(i==0)
             {
-                result.put("userId",resultSet.getInt("User_id"));
+                result.put("userId",resultSet.getInt("User_Task_id"));
             }
-            Date start=java.sql.Date.valueOf(resultSet.getString("U_Task_start").substring(0,10));
-            Date end=java.sql.Date.valueOf(resultSet.getString("U_Task_end").substring(0,10));
-            if((start.before(wantDate)||start.equals(wantDate))&&(wantDate.before(end)||wantDate.equals(end)))
-            {
-                JSONObject jo=new JSONObject();
-                jo.put("taskId",resultSet.getInt("U_Task_Id"));
-                jo.put("taskFlag",resultSet.getString("Task_Flag"));
-                jo.put("taskInfo",resultSet.getString("U_Task_Info"));
-                jo.put("start",resultSet.getString("U_Task_start"));
-                jo.put("end",resultSet.getString("U_Task_end"));
-                jo.put("status",resultSet.getBoolean("U_Task_status"));
-                jo.put("score",resultSet.getInt("U_Task_score"));
+            JSONObject jo = new JSONObject();
+            jo.put("taskId", resultSet.getInt("Task_Task_Id"));
+            jo.put("taskFlag", resultSet.getString("Task_Flag"));//任务类别：系统->0/自定义->1
+            jo.put("taskInfo", resultSet.getString("M_Task_Info"));
+            jo.put("status", resultSet.getString("M_Task_status"));
+            jo.put("score", resultSet.getInt("M_Task_score"));
+            jo.put("taskOrder",resultSet.getInt("M_Task_number"));//任务顺序
+            jo.put("taskCatagory",resultSet.getString("M_Task_Catagory"));
 
-                taskArr.add(i,jo);
-                i++;
-            }
-            else
-            {
-                continue;
-            }
+            taskArr.add(i, jo);
+            i++;
         }
         result.put("msg","ok");//无条件正确？
         result.put("data",taskArr);
 
         return result.toJSONString();
     }
+
+    /**
+     *任务反馈API
+     * @param jsonParam
+     * @return
+     * @throws JSONException
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
+    @ResponseBody
+    @RequestMapping(value = "/taskFeedback", method = RequestMethod.POST, produces = "application/json;charset=UTF-8")
+    public String taskFeedback(@RequestBody JSONObject jsonParam) throws JSONException, ClassNotFoundException, SQLException {
+
+        int userId=jsonParam.getInteger("userId");
+        int score=jsonParam.getInteger("score");
+        int taskId=jsonParam.getInteger("taskId");
+        String taskFlag=jsonParam.getString("taskFlag");
+
+        // 连接数据库
+        Class.forName("com.mysql.cj.jdbc.Driver");
+        String url = "jdbc:mysql://47.95.240.12/test?characterEncoding=utf8&useSSL=false&serverTimezone=GMT";
+        Connection con = DriverManager.getConnection(url, "hhh", "123");
+        Statement statement = con.createStatement();
+
+        int row=statement.executeUpdate("UPDATE User_Task set U_Task_status=1,U_Task_score="+score+" WHERE User_Id="+userId+" and U_Task_Id="+taskId);
+        JSONObject result = new JSONObject();
+        if(row==1)
+        {
+            result.put("msg","ok");
+        }
+        else
+        {
+            result.put("msg","false");
+        }
+
+        return result.toJSONString();
+    }
+
 
     /**
      * 测试API
@@ -351,21 +475,13 @@ public class DemoApplication extends SpringBootServletInitializer{
     
     @RequestMapping(value = "/hello")
     public String hello(){
-        return "hello world!";
+        return "张迪真好看";
     }
 
     @RequestMapping(value = "/")
     public String bigOne(){
         return "hello bigOne!";
     }
-
-//    @RequestMapping(value = "/getuser")
-//    public User getuser(){
-//        User user=new User();
-//        user.setUsername("xiaoming");
-//        user.setPassword("jkjk");
-//        return user;
-//    }
 
     public static void main(String[] args) {
         SpringApplication.run(DemoApplication.class, args);
